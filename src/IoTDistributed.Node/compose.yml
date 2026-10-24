@@ -87,6 +87,36 @@ services:
       timeout: 3s
       retries: 10
 
+
+  
+  
+  db-init:
+    image: postgres:17
+    environment:
+      PGPASSWORD: admin
+    volumes:
+      - ../../database:/scripts:ro
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        for host in db1 db2 db3; do
+          echo "Inicializando banco $$host"
+
+          psql -h "$$host" -U iot -d iotdb \
+            -v ON_ERROR_STOP=1 \
+            -f /scripts/001_initial_schema.sql
+        done
+
+    depends_on:
+      db1:
+        condition: service_healthy
+      db2:
+        condition: service_healthy
+      db3:
+        condition: service_healthy
+
+
+
 volumes:
   pg1_data:
   pg2_data:
