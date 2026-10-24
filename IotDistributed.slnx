@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/IoTDistributed.Node/IoTDistributed.Node.csproj" />
+  </Folder>
+</Solution>
