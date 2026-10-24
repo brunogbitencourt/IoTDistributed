@@ -1,28 +1,93 @@
 
-# ETAPA 1 - BUILD
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+services:
+  node-1:
+    image: iotdistributed-node:dev
+    environment:
+      NODE_ID: "1"
+      GRPC_PORT: "8080"
+      PEERS: "2=http://node-2:8080;3=http://node-3:8080"
+      ConnectionStrings__Default: "Host=db1;Port=5432;Database=iotdb;Username=iot;Password=dev_only_change_me"
+    ports:
+      - "127.0.0.1:5001:8080"
+    depends_on:
+      db1:
+        condition: service_healthy
 
-WORKDIR /src
+  node-2:
+    image: iotdistributed-node:dev
+    environment:
+      NODE_ID: "2"
+      GRPC_PORT: "8080"
+      PEERS: "1=http://node-1:8080;3=http://node-3:8080"
+      ConnectionStrings__Default: "Host=db2;Port=5432;Database=iotdb;Username=iot;Password=dev_only_change_me"
+    ports:
+      - "127.0.0.1:5002:8080"
+    depends_on:
+      db2:
+        condition: service_healthy
 
-# Copia o arquivo do projeto
-COPY src/IoTDistributed.Node/IoTDistributed.Node.csproj src/IoTDistributed.Node/
+  node-3:
+    image: iotdistributed-node:dev
+    environment:
+      NODE_ID: "3"
+      GRPC_PORT: "8080"
+      PEERS: "1=http://node-1:8080;2=http://node-2:8080"
+      ConnectionStrings__Default: "Host=db3;Port=5432;Database=iotdb;Username=iot;Password=dev_only_change_me"
+    ports:
+      - "127.0.0.1:5003:8080"
+    depends_on:
+      db3:
+        condition: service_healthy
 
-# Restaura as dependências
-RUN dotnet restore src/IoTDistributed.Node/IoTDistributed.Node.csproj
+  db1:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: iot
+      POSTGRES_PASSWORD: dev_only_change_me
+      POSTGRES_DB: iotdb
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pg1_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iot -d iotdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
-# Copia o restante do código
-COPY . .
+  db2:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: iot
+      POSTGRES_PASSWORD: dev_only_change_me
+      POSTGRES_DB: iotdb
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - pg2_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iot -d iotdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
-# Compila e publica a aplicação
-RUN dotnet publish src/IoTDistributed.Node/IoTDistributed.Node.csproj -c Release -o /app/publish --no-restore
+  db3:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: iot
+      POSTGRES_PASSWORD: dev_only_change_me
+      POSTGRES_DB: iotdb
+    ports:
+      - "127.0.0.1:5435:5432"
+    volumes:
+      - pg3_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iot -d iotdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
-# ETAPA 2 - RUNTIME
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
-
-WORKDIR /app
-
-# Copia os arquivos publicados
-COPY --from=build /app/publish .
-
-# Inicia a aplicação
-ENTRYPOINT ["dotnet", "IoTDistributed.Node.dll"]
+volumes:
+  pg1_data:
+  pg2_data:
+  pg3_data:

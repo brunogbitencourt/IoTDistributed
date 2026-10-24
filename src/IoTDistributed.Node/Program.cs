@@ -2,6 +2,7 @@
 using IoTDistributed.Node.Services;
 using IoTDistributed.Node.Workers;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +18,17 @@ builder.WebHost.ConfigureKestrel(options =>
 });
 
 builder.Services.AddGrpc();
+
+string connectionString =
+    builder.Configuration.GetConnectionString("Default")
+    ?? throw new InvalidOperationException(
+        "Connection string não configurada.");
+
+builder.Services.AddSingleton(
+    _ => NpgsqlDataSource.Create(connectionString));
+
+builder.Services.AddHostedService<DatabaseConnectionWorker>();
+
 builder.Services.AddHostedService<PeerPingWorker>();
 
 var app = builder.Build();
