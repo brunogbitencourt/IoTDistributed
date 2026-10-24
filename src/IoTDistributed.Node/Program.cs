@@ -28,10 +28,10 @@ string connectionString =
 builder.Services.AddSingleton(
     _ => NpgsqlDataSource.Create(connectionString));
 
-builder.Services.AddScoped<SensorRepository>();
+
 builder.Services.AddHostedService<DatabaseConnectionWorker>();
-builder.Services.AddHostedService<PeerPingWorker>();
-builder.Services.AddHostedService<SensorReadingTestWorker>();
+builder.Services.AddScoped<SensorRepository>();
+// builder.Services.AddHostedService<SensorReadingTestWorker>();
 
 var app = builder.Build();
 

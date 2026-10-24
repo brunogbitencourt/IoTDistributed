@@ -7,6 +7,9 @@ package cluster;
 
 service Cluster {
     rpc Ping (PingRequest) returns (PingReply);
+
+    rpc SubmitReading (SensorReadingRequest)
+      returns (SensorReadingReply);
 }
 
 message PingRequest {
@@ -17,3 +20,18 @@ message PingReply {
     int32 responderId = 1;
     bool success = 2;
 }
+
+
+message SensorReadingRequest {
+  string event_id = 1;
+  string sensor_id = 2;
+  double value = 3;
+  int64 collected_at_unix_ms = 4;
+}
+
+message SensorReadingReply {
+  string event_id = 1;
+  bool inserted = 2;
+  int32 node_id = 3;
+}
+
