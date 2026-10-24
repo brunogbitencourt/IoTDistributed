@@ -90,6 +90,7 @@ services:
 
   
   
+  
   db-init:
     image: postgres:17
     environment:
@@ -102,9 +103,15 @@ services:
         for host in db1 db2 db3; do
           echo "Inicializando banco $$host"
 
-          psql -h "$$host" -U iot -d iotdb \
-            -v ON_ERROR_STOP=1 \
-            -f /scripts/001_initial_schema.sql
+          for script in /scripts/[0-9][0-9][0-9]_*.sql; do
+            [ -f "$$script" ] || continue
+
+            echo "Executando $$script em $$host"
+
+            psql -h "$$host" -U iot -d iotdb \
+              -v ON_ERROR_STOP=1 \
+              -f "$$script"
+          done
         done
 
     depends_on:
@@ -114,6 +121,16 @@ services:
         condition: service_healthy
       db3:
         condition: service_healthy
+
+
+  
+  emqx:
+    image: emqx:5.8.8
+    ports:
+      - "127.0.0.1:1883:1883"
+      - "127.0.0.1:18083:18083"
+
+
 
 
 
