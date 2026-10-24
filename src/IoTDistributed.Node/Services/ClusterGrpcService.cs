@@ -14,18 +14,21 @@ public class ClusterGrpcService : Cluster.ClusterBase
     private readonly IConfiguration _configuration;
     private readonly SensorRepository _repository;
     private readonly ReplicationService _replicationService;
+    private readonly SensorIngestionService _ingestionService;
+
 
     public ClusterGrpcService(
         ILogger<ClusterGrpcService> logger,
         IConfiguration configuration,
         SensorRepository repository,
-        ReplicationService replicationService)
+        SensorIngestionService ingestionService)
     {
         _logger = logger;
         _configuration = configuration;
         _repository = repository;
-        _replicationService = replicationService;
+        _ingestionService = ingestionService;
     }
+
 
 
 
@@ -49,20 +52,12 @@ public class ClusterGrpcService : Cluster.ClusterBase
 
 
 
+
     public override async Task<SensorReadingReply> SubmitReading(
         SensorReadingRequest request,
         ServerCallContext context)
     {
         int nodeId = _configuration.GetValue<int>("NODE_ID");
-
-
-        if (nodeId <= 0)
-        {
-            throw new RpcException(new Status(
-                StatusCode.Internal,
-                "NODE_ID não configurado."));
-        }
-
 
         if (!Guid.TryParse(request.EventId, out Guid eventId))
         {
@@ -71,18 +66,12 @@ public class ClusterGrpcService : Cluster.ClusterBase
                 "EventId inválido."));
         }
 
-        if (string.IsNullOrWhiteSpace(request.SensorId))
+        if (string.IsNullOrWhiteSpace(request.SensorId) ||
+            !double.IsFinite(request.Value))
         {
             throw new RpcException(new Status(
                 StatusCode.InvalidArgument,
-                "SensorId é obrigatório."));
-        }
-
-        if (!double.IsFinite(request.Value))
-        {
-            throw new RpcException(new Status(
-                StatusCode.InvalidArgument,
-                "Valor de medição inválido."));
+                "Dados da medição inválidos."));
         }
 
         DateTime collectedAtUtc;
@@ -100,24 +89,6 @@ public class ClusterGrpcService : Cluster.ClusterBase
                 "Data da medição inválida."));
         }
 
-        int? ownerNodeId = await _repository.GetOwnerNodeIdAsync(
-            request.SensorId,
-            context.CancellationToken);
-
-        if (ownerNodeId is null)
-        {
-            throw new RpcException(new Status(
-                StatusCode.NotFound,
-                "Sensor não cadastrado."));
-        }
-
-        if (ownerNodeId != nodeId)
-        {
-            throw new RpcException(new Status(
-                StatusCode.FailedPrecondition,
-                $"Sensor pertence ao nó {ownerNodeId}."));
-        }
-
         var reading = new SensorReading(
             EventId: eventId,
             SensorId: request.SensorId,
@@ -126,32 +97,39 @@ public class ClusterGrpcService : Cluster.ClusterBase
             OriginNodeId: nodeId
         );
 
-        bool inserted = await _repository.SaveAsync(
-            reading,
-            context.CancellationToken);
-
-
-        if (inserted)
+        try
         {
-            await _replicationService.ReplicateAsync(
+            bool inserted = await _ingestionService.ProcessAsync(
                 reading,
-                context.CancellationToken);
+                cancellationToken: context.CancellationToken);
+
+            return new SensorReadingReply
+            {
+                EventId = eventId.ToString(),
+                Inserted = inserted,
+                NodeId = nodeId
+            };
         }
-
-
-        _logger.LogWarning(
-            "SubmitReading recebido: EventId='{EventId}', Tamanho={Length}, SensorId='{SensorId}'",
-            request.EventId,
-            request.EventId.Length,
-            request.SensorId
-        );
-        return new SensorReadingReply
+        catch (KeyNotFoundException ex)
         {
-            EventId = eventId.ToString(),
-            Inserted = inserted,
-            NodeId = nodeId
-        };
+            throw new RpcException(new Status(
+                StatusCode.NotFound,
+                ex.Message));
+        }
+        catch (ArgumentException ex)
+        {
+            throw new RpcException(new Status(
+                StatusCode.InvalidArgument,
+                ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new RpcException(new Status(
+                StatusCode.FailedPrecondition,
+                ex.Message));
+        }
     }
+
 
 
     public override async Task<ReplicateReadingReply> ReplicateReading(

@@ -105,5 +105,30 @@ public class SensorRepository
     }
 
 
+    public async Task<string?> GetMqttTopicAsync(
+        string sensorId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+        SELECT mqtt_topic
+        FROM sensors
+        WHERE sensor_id = @SensorId;
+        """;
+
+        await using var connection =
+            await _dataSource.OpenConnectionAsync(cancellationToken);
+
+        var command = new CommandDefinition(
+            commandText: sql,
+            parameters: new { SensorId = sensorId },
+            cancellationToken: cancellationToken
+        );
+
+        return await connection.QuerySingleOrDefaultAsync<string>(
+            command);
+    }
+
+
+
 
 }

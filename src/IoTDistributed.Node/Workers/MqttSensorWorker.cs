@@ -1,6 +1,9 @@
 ﻿
 using IoTDistributed.Node.Persistence;
 using MQTTnet;
+using System.Text.Json;
+using IoTDistributed.Node.Services;
+using IoTDistributed.Node.Sensors;
 
 namespace IoTDistributed.Node.Workers;
 
@@ -39,21 +42,75 @@ public class MqttSensorWorker : BackgroundService
             .WithTcpServer(host, port)
             .Build();
 
-        // Chamado sempre que uma publicação chega ao cliente.
-        client.ApplicationMessageReceivedAsync += args =>
+
+        client.ApplicationMessageReceivedAsync += async args =>
         {
             string topic = args.ApplicationMessage.Topic;
-            string? payload =
+            string payload =
                 args.ApplicationMessage.ConvertPayloadToString();
 
-            _logger.LogInformation(
-                "NODE {NodeId}: MQTT recebido. Tópico={Topic}, Payload={Payload}",
-                nodeId,
-                topic,
-                payload);
+            try
+            {
+                _logger.LogInformation(
+                    "NODE {NodeId}: MQTT recebido no tópico {Topic}",
+                    nodeId,
+                    topic);
 
-            return Task.CompletedTask;
+                MqttSensorPayload? message =
+                    JsonSerializer.Deserialize<MqttSensorPayload>(payload);
+
+                if (message?.EventId is null ||
+                    message.EventId == Guid.Empty ||
+                    string.IsNullOrWhiteSpace(message.SensorId) ||
+                    message.Value is null ||
+                    message.CollectedAtUtc is null)
+                {
+                    throw new ArgumentException(
+                        "Payload MQTT incompleto ou inválido.");
+                }
+
+                var reading = new SensorReading(
+                    EventId: message.EventId.Value,
+                    SensorId: message.SensorId,
+                    Value: message.Value.Value,
+                    CollectedAtUtc:
+                        message.CollectedAtUtc.Value.UtcDateTime,
+                    OriginNodeId: nodeId
+                );
+
+                await using var scope =
+                    _scopeFactory.CreateAsyncScope();
+
+                var ingestionService =
+                    scope.ServiceProvider
+                        .GetRequiredService<SensorIngestionService>();
+
+                bool inserted = await ingestionService.ProcessAsync(
+                    reading,
+                    mqttTopic: topic,
+                    cancellationToken: stoppingToken);
+
+                _logger.LogInformation(
+                    "NODE {NodeId}: MQTT processado. Evento={EventId}, Inserido={Inserted}",
+                    nodeId,
+                    reading.EventId,
+                    inserted);
+            }
+            catch (OperationCanceledException)
+                when (stoppingToken.IsCancellationRequested)
+            {
+                // Aplicação encerrando.
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "NODE {NodeId}: erro ao processar MQTT do tópico {Topic}",
+                    nodeId,
+                    topic);
+            }
         };
+
 
         bool subscriptionsReady = false;
 

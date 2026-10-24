@@ -34,6 +34,7 @@ builder.Services.AddScoped<SensorRepository>();
 // builder.Services.AddHostedService<SensorReadingTestWorker>();
 builder.Services.AddScoped<ReplicationService>();
 builder.Services.AddHostedService<MqttSensorWorker>();
+builder.Services.AddScoped<SensorIngestionService>();
 
 var app = builder.Build();
 
