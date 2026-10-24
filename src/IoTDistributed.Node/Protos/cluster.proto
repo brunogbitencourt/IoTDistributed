@@ -10,6 +10,9 @@ service Cluster {
 
     rpc SubmitReading (SensorReadingRequest)
       returns (SensorReadingReply);
+
+    rpc ReplicateReading (ReplicateReadingRequest)
+       returns (ReplicateReadingReply);    
 }
 
 message PingRequest {
@@ -35,3 +38,17 @@ message SensorReadingReply {
   int32 node_id = 3;
 }
 
+
+message ReplicateReadingRequest {
+  string event_id = 1;
+  string sensor_id = 2;
+  double value = 3;
+  int64 collected_at_unix_ms = 4;
+  int32 origin_node_id = 5;
+}
+
+message ReplicateReadingReply {
+  string event_id = 1;
+  bool inserted = 2;
+  int32 node_id = 3;
+}

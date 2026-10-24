@@ -32,6 +32,7 @@ builder.Services.AddSingleton(
 builder.Services.AddHostedService<DatabaseConnectionWorker>();
 builder.Services.AddScoped<SensorRepository>();
 // builder.Services.AddHostedService<SensorReadingTestWorker>();
+builder.Services.AddScoped<ReplicationService>();
 
 var app = builder.Build();
 
