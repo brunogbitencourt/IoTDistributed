@@ -77,4 +77,33 @@ public class SensorRepository
     }
 
 
+
+    public async Task<IReadOnlyList<string>> GetMqttTopicsByNodeAsync(
+        int nodeId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+        SELECT DISTINCT mqtt_topic
+        FROM sensors
+        WHERE owner_node_id = @NodeId
+          AND mqtt_topic IS NOT NULL
+        ORDER BY mqtt_topic;
+        """;
+
+        await using var connection =
+            await _dataSource.OpenConnectionAsync(cancellationToken);
+
+        var command = new CommandDefinition(
+            commandText: sql,
+            parameters: new { NodeId = nodeId },
+            cancellationToken: cancellationToken
+        );
+
+        var topics = await connection.QueryAsync<string>(command);
+
+        return topics.ToArray();
+    }
+
+
+
 }

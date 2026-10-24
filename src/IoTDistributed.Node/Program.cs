@@ -33,6 +33,7 @@ builder.Services.AddHostedService<DatabaseConnectionWorker>();
 builder.Services.AddScoped<SensorRepository>();
 // builder.Services.AddHostedService<SensorReadingTestWorker>();
 builder.Services.AddScoped<ReplicationService>();
+builder.Services.AddHostedService<MqttSensorWorker>();
 
 var app = builder.Build();
 
