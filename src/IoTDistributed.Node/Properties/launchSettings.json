@@ -16,6 +16,18 @@
       "dotnetRunMessages": true,
       "applicationUrl": "https://localhost:7100;http://localhost:5077"
     },
+    "Local-Node1": {
+      "commandName": "Project",
+      "launchBrowser": false,
+      "dotnetRunMessages": true,
+      "applicationUrl": "http://localhost:5101",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "NODE_ID": "1",
+        "GRPC_PORT": "5101",
+        "PEERS": "2=http://localhost:5002;3=http://localhost:5003"
+      }
+    },
     "Container (Dockerfile)": {
       "commandName": "Docker",
       "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}",

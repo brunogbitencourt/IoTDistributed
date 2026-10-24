@@ -6,7 +6,7 @@ services:
       NODE_ID: "1"
       GRPC_PORT: "8080"
       PEERS: "2=http://node-2:8080;3=http://node-3:8080"
-      ConnectionStrings__Default: "Host=db1;Port=5432;Database=iotdb;Username=iot;Password=dev_only_change_me"
+      ConnectionStrings__Default: "Host=db1;Port=5432;Database=iotdb;Username=iot;Password=admin"
     ports:
       - "127.0.0.1:5001:8080"
     depends_on:
@@ -19,7 +19,7 @@ services:
       NODE_ID: "2"
       GRPC_PORT: "8080"
       PEERS: "1=http://node-1:8080;3=http://node-3:8080"
-      ConnectionStrings__Default: "Host=db2;Port=5432;Database=iotdb;Username=iot;Password=dev_only_change_me"
+      ConnectionStrings__Default: "Host=db2;Port=5432;Database=iotdb;Username=iot;Password=admin"
     ports:
       - "127.0.0.1:5002:8080"
     depends_on:
