@@ -1,0 +1,19 @@
+
+syntax = "proto3";
+
+option csharp_namespace = "IoTDistributed.Node.Grpc";
+
+package cluster;
+
+service Cluster {
+    rpc Ping (PingRequest) returns (PingReply);
+}
+
+message PingRequest {
+    int32 senderId = 1;
+}
+
+message PingReply {
+    int32 responderId = 1;
+    bool success = 2;
+}
