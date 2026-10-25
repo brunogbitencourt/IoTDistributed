@@ -1,0 +1,35 @@
+menu "IoT Sensor Simulator"
+
+    config SIM_WIFI_SSID
+        string "Wi-Fi SSID (rede 2.4 GHz)"
+        default ""
+
+    config SIM_WIFI_PASSWORD
+        string "Wi-Fi password"
+        default ""
+
+    config SIM_MQTT_BROKER_URI
+        string "MQTT broker URI (IP do PC na rede local)"
+        default ""
+        help
+            Exemplo: mqtt://192.168.1.100:1883.
+            Nao usar localhost nem o nome Docker 'emqx' no ESP32.
+
+    config SIM_MQTT_USERNAME
+        string "MQTT username (opcional)"
+        default ""
+
+    config SIM_MQTT_PASSWORD
+        string "MQTT password (opcional)"
+        default ""
+
+    config SIM_SNTP_SERVER
+        string "Servidor NTP"
+        default "pool.ntp.org"
+
+    config SIM_PUBLISH_INTERVAL_SECONDS
+        int "Intervalo entre lotes de leituras (segundos)"
+        range 1 3600
+        default 10
+
+endmenu

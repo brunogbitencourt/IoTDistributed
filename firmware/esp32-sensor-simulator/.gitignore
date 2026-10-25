@@ -1,0 +1,12 @@
+# Configuracoes locais (incluem credenciais Wi-Fi e MQTT)
+sdkconfig
+sdkconfig.old
+sdkconfig.*
+!sdkconfig.defaults
+
+# Saidas geradas pelo ESP-IDF
+build/
+managed_components/
+dependencies.lock
+.vscode/
+.idea/
