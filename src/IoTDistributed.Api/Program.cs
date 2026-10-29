@@ -19,6 +19,7 @@ builder.Services.AddSingleton(
 
 // Registra repositório.
 builder.Services.AddScoped<SensorRepository>();
+builder.Services.AddScoped<ReadingRepository>();
 
 var app = builder.Build();
 
