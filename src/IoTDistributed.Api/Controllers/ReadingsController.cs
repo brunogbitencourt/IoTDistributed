@@ -33,4 +33,20 @@ public class ReadingsController : ControllerBase
 
         return Ok(readings);
     }
+
+
+    [HttpGet("{eventId:guid}/replicas")]
+    public async Task<ActionResult<ReadingReplicasDto>> GetReplicas(
+        [FromRoute] Guid eventId,
+        CancellationToken cancellationToken)
+    {
+        var result = await _repository.GetReplicasAsync(
+            eventId,
+            cancellationToken);
+
+        return Ok(result);
+    }
+
+
+
 }
