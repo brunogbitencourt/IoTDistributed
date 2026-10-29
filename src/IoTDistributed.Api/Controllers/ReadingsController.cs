@@ -1,8 +1,9 @@
 ﻿
-using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Mvc;
 using IoTDistributed.Api.Models;
 using IoTDistributed.Api.Persistence;
+using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
+using System.Xml.Linq;
 
 namespace IoTDistributed.Api.Controllers;
 
@@ -19,11 +20,13 @@ public class ReadingsController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<SensorReadingDto>>> GetAll(
+        [FromQuery, Range(1, 3)] int node = 1,
         [FromQuery, Range(1, 100)] int limit = 20,
         [FromQuery] string? sensorId = null,
         CancellationToken cancellationToken = default)
     {
         var readings = await _repository.GetAllAsync(
+            node,
             limit,
             sensorId,
             cancellationToken);

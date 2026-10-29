@@ -8,14 +8,16 @@ namespace IoTDistributed.Api.Persistence;
 
 public class ReadingRepository
 {
-    private readonly NpgsqlDataSource _dataSource;
+
+    private readonly ClusterDataSources _dataSources;
 
     public ReadingRepository(ClusterDataSources dataSources)
     {
-        _dataSource = dataSources.Get(1);
+        _dataSources = dataSources;
     }
 
     public async Task<IReadOnlyList<SensorReadingDto>> GetAllAsync(
+        int nodeId,
         int limit,
         string? sensorId,
         CancellationToken cancellationToken = default)
@@ -43,8 +45,12 @@ public class ReadingRepository
             LIMIT @Limit;
             """;
 
+
+        var dataSource = _dataSources.Get(nodeId);
+
         await using var connection =
-            await _dataSource.OpenConnectionAsync(cancellationToken);
+            await dataSource.OpenConnectionAsync(cancellationToken);
+
 
         var command = new CommandDefinition(
             commandText: sql,
