@@ -1,23 +1,16 @@
 
+using IoTDistributed.Api.Database;
 using IoTDistributed.Api.Persistence;
-using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-// Obtém a conexão configurada nos User Secrets.
-string connectionString =
-    builder.Configuration.GetConnectionString("Default")
-    ?? throw new InvalidOperationException(
-        "ConnectionStrings:Default não configurada.");
+// Gerencia as conexões com DB1, DB2 e DB3.
+builder.Services.AddSingleton<ClusterDataSources>();
 
-// Registra o NpgsqlDataSource como singleton.
-builder.Services.AddSingleton(
-    _ => NpgsqlDataSource.Create(connectionString));
-
-// Registra repositório.
+// Repositórios
 builder.Services.AddScoped<SensorRepository>();
 builder.Services.AddScoped<ReadingRepository>();
 

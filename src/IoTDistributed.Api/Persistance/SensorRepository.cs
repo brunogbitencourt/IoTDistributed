@@ -1,7 +1,8 @@
 ﻿
 using Dapper;
-using Npgsql;
+using IoTDistributed.Api.Database;
 using IoTDistributed.Api.Models;
+using Npgsql;
 
 namespace IoTDistributed.Api.Persistence;
 
@@ -9,9 +10,9 @@ public class SensorRepository
 {
     private readonly NpgsqlDataSource _dataSource;
 
-    public SensorRepository(NpgsqlDataSource dataSource)
+    public SensorRepository(ClusterDataSources dataSources)
     {
-        _dataSource = dataSource;
+        _dataSource = dataSources.Get(1);
     }
 
     public async Task<IReadOnlyList<SensorDto>> GetAllAsync(
