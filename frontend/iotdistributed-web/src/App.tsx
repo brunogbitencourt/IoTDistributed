@@ -1,121 +1,194 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
+
+import { useEffect, useState } from 'react'
+import SensorCard from './components/SensorCard'
+import type { Sensor } from './types/Sensor'
+import type { SensorReading } from './types/SensorReading'
 import './App.css'
 
+const sensorNames: Record<string, string> = {
+  temperature: 'Temperatura',
+  pressure: 'Pressão',
+  level: 'Nível',
+}
+
+const sensorUnits: Record<string, string> = {
+  celsius: '°C',
+  bar: 'bar',
+  percent: '%',
+}
+
 function App() {
-  const [count, setCount] = useState(0)
+  const [sensors, setSensors] = useState<Sensor[]>([])
+
+  const [selectedSensorId, setSelectedSensorId] =
+    useState<string | null>(null)
+
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Última medição de cada sensor
+  const [latestReadings, setLatestReadings] =
+    useState<Record<string, SensorReading | null>>({})
+
+  const [readingsLoading, setReadingsLoading] = useState(false)
+  const [readingsError, setReadingsError] =
+    useState<string | null>(null)
+
+  // Efeito 1: carregar sensores cadastrados
+  useEffect(() => {
+    const controller = new AbortController()
+
+    async function loadSensors() {
+      try {
+        const response = await fetch('/api/sensors', {
+          signal: controller.signal,
+        })
+
+        if (!response.ok) {
+          throw new Error(`Erro HTTP ${response.status}`)
+        }
+
+        const data = (await response.json()) as Sensor[]
+
+        if (controller.signal.aborted) return
+
+        setSensors(data)
+
+        setSelectedSensorId(current =>
+          current ?? data[0]?.sensorId ?? null
+        )
+      } catch (err) {
+        if (controller.signal.aborted) return
+
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Erro desconhecido'
+        )
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    void loadSensors()
+
+    return () => controller.abort()
+  }, [])
+
+  // Efeito 2: carregar a última medição de cada sensor
+  useEffect(() => {
+    if (sensors.length === 0) return
+
+    const controller = new AbortController()
+
+    async function loadLatestReadings() {
+      setReadingsLoading(true)
+      setReadingsError(null)
+
+      try {
+        const entries = await Promise.all(
+          sensors.map(async sensor => {
+            const params = new URLSearchParams({
+              node: String(sensor.ownerNodeId),
+              sensorId: sensor.sensorId,
+              limit: '1',
+            })
+
+            const response = await fetch(
+              `/api/readings?${params}`,
+              { signal: controller.signal }
+            )
+
+            if (!response.ok) {
+              throw new Error(
+                `Erro ao consultar ${sensor.sensorId}: HTTP ${response.status}`
+              )
+            }
+
+            const readings =
+              (await response.json()) as SensorReading[]
+
+            return [
+              sensor.sensorId,
+              readings[0] ?? null,
+            ] as const
+          })
+        )
+
+        if (controller.signal.aborted) return
+
+        setLatestReadings(Object.fromEntries(entries))
+      } catch (err) {
+        if (controller.signal.aborted) return
+
+        setReadingsError(
+          err instanceof Error
+            ? err.message
+            : 'Erro ao consultar medições'
+        )
+      } finally {
+        if (!controller.signal.aborted) {
+          setReadingsLoading(false)
+        }
+      }
+    }
+
+    void loadLatestReadings()
+
+    return () => controller.abort()
+  }, [sensors])
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>IoTDistributed Dashboard</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
+    <main className="dashboard">
+      <header>
+        <h1>IoTDistributed Dashboard</h1>
+        <p>Monitoramento de sensores distribuídos</p>
+
+        <p>
+          Sensor selecionado: {selectedSensorId ?? 'Nenhum'}
+        </p>
+      </header>
+
+      {loading && <p>Carregando sensores...</p>}
+
+      {error && (
+        <p role="alert">Erro ao carregar sensores: {error}</p>
+      )}
+
+      {readingsLoading && <p>Carregando medições...</p>}
+
+      {readingsError && (
+        <p role="alert">{readingsError}</p>
+      )}
+
+      {!loading && !error && sensors.length === 0 && (
+        <p>Nenhum sensor cadastrado.</p>
+      )}
+
+      <section className="sensor-grid">
+        {sensors.map(sensor => (
+          <SensorCard
+            key={sensor.sensorId}
+            name={
+              sensorNames[sensor.sensorType] ??
+              sensor.sensorType
+            }
+            sensorId={sensor.sensorId}
+            unit={sensorUnits[sensor.unit] ?? sensor.unit}
+            nodeId={sensor.ownerNodeId}
+            value={
+              latestReadings[sensor.sensorId]?.value ?? null
+            }
+            selected={selectedSensorId === sensor.sensorId}
+            onSelect={() =>
+              setSelectedSensorId(sensor.sensorId)
+            }
+          />
+        ))}
       </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+    </main>
   )
 }
 
