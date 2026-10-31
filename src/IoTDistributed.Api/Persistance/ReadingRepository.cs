@@ -139,5 +139,50 @@ public class ReadingRepository
     }
 
 
+    public async Task<IReadOnlyList<Guid>> GetEventIdsInWindowAsync(
+        int nodeId,
+        DateTime fromUtc,
+        DateTime toUtc,
+        CancellationToken cancellationToken = default)
+    {
+        if (fromUtc.Kind != DateTimeKind.Utc ||
+            toUtc.Kind != DateTimeKind.Utc ||
+            fromUtc >= toUtc)
+        {
+            throw new ArgumentException(
+                "Informe um intervalo UTC válido.");
+        }
+
+        const string sql = """
+        SELECT event_id
+        FROM sensor_readings
+        WHERE collected_at >= @FromUtc
+          AND collected_at < @ToUtc
+        ORDER BY event_id;
+        """;
+
+        var dataSource = _dataSources.Get(nodeId);
+
+        await using var connection =
+            await dataSource.OpenConnectionAsync(cancellationToken);
+
+        var command = new CommandDefinition(
+            commandText: sql,
+            parameters: new
+            {
+                FromUtc = fromUtc,
+                ToUtc = toUtc
+            },
+            cancellationToken: cancellationToken
+        );
+
+        var eventIds =
+            await connection.QueryAsync<Guid>(command);
+
+        return eventIds.ToArray();
+    }
+
+
+
 
 }

@@ -1,6 +1,7 @@
 
 using IoTDistributed.Api.Database;
 using IoTDistributed.Api.Persistence;
+using IoTDistributed.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +14,7 @@ builder.Services.AddSingleton<ClusterDataSources>();
 // Repositórios
 builder.Services.AddScoped<SensorRepository>();
 builder.Services.AddScoped<ReadingRepository>();
+builder.Services.AddScoped<ReplicationComparisonService>();
 
 var app = builder.Build();
 
