@@ -106,6 +106,6 @@ export function useDashboard() {
   return {
     sensors, sensorsLoading, sensorsError, readingsBySensor, readingErrors,
     databases, databaseError, lastCheckedAt, updating,
-    autoRefresh, setAutoRefresh, refresh, intervalSeconds: POLL_INTERVAL_MS / 1000,
+    autoRefresh, setAutoRefresh, refresh, refreshKey, intervalSeconds: POLL_INTERVAL_MS / 1000,
   }
 }

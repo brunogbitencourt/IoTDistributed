@@ -3,24 +3,27 @@ import Icon from './components/Icon'
 import type { IconName } from './components/Icon'
 import SensorCard from './components/SensorCard'
 import HistoryChart from './components/HistoryChart'
+import ReplicationPanel from './components/ReplicationPanel'
 import { useDashboard } from './hooks/useDashboard'
 import type { Sensor } from './types/Sensor'
 import type { SensorReading } from './types/SensorReading'
 import { formatDate, formatTime, formatValue, sensorName, sensorUnit } from './utils/format'
 import './App.css'
 
-type Page = 'overview' | 'readings' | 'cluster'
+type Page = 'overview' | 'readings' | 'cluster' | 'replication'
 
 const navigation: { id: Page; label: string; icon: IconName }[] = [
   { id: 'overview', label: 'Visão geral', icon: 'grid' },
   { id: 'readings', label: 'Medições', icon: 'activity' },
   { id: 'cluster', label: 'Infraestrutura', icon: 'database' },
+  { id: 'replication', label: 'Replicação', icon: 'layers' },
 ]
 
 const pageTitles: Record<Page, { title: string; description: string }> = {
   overview: { title: 'Visão geral', description: 'Acompanhe os sensores e as últimas leituras da rede.' },
   readings: { title: 'Medições', description: 'Explore o histórico e os registros coletados.' },
   cluster: { title: 'Infraestrutura', description: 'Disponibilidade dos bancos PostgreSQL do cluster.' },
+  replication: { title: 'Consistência da replicação', description: 'Compare GUIDs entre os PostgreSQL e identifique registros que não chegaram a todas as réplicas.' },
 }
 
 function newest(readings: SensorReading[] | undefined): SensorReading | undefined {
@@ -47,7 +50,7 @@ function App() {
   const {
     sensors, sensorsLoading, sensorsError, readingsBySensor, readingErrors,
     databases, databaseError, lastCheckedAt, updating, autoRefresh,
-    setAutoRefresh, refresh, intervalSeconds,
+    setAutoRefresh, refresh, refreshKey, intervalSeconds,
   } = useDashboard()
 
   const [page, setPage] = useState<Page>('overview')
@@ -171,6 +174,8 @@ function App() {
             {renderChart()}
           </>}
 
+          {page === 'replication' && <ReplicationPanel autoRefresh={autoRefresh} refreshKey={refreshKey}/>}
+
           {page === 'cluster' && <>
             <div className="readings-intro"><span className="info-icon"><Icon name="server" size={20}/></span><div><strong>Arquitetura distribuída</strong><p>Três nós .NET se comunicam via gRPC. Cada nó possui seu próprio PostgreSQL. A API REST consulta os bancos independentemente.</p></div></div>
             {databaseError && <div className="alert-banner" role="alert"><Icon name="alert" size={20}/><div><strong>Falha ao verificar bancos</strong><span>{databaseError}</span></div></div>}
@@ -182,6 +187,7 @@ function App() {
                 return <article className="cluster-card" key={nodeId}><div className="cluster-top"><span className="cluster-icon"><Icon name="database" size={24}/></span><span className={`cluster-status ${online ? 'cluster-status--online' : state === 'offline' ? 'cluster-status--offline' : ''}`}><span className="live-dot"/>{state === 'online' ? 'Disponível' : state === 'offline' ? 'Indisponível' : 'Sem informação'}</span></div><h2>PostgreSQL {nodeId}</h2><p>db{nodeId}:5432 · NODE {nodeId.toString().padStart(2,'0')}</p><div className="cluster-divider"/><div className="cluster-metric"><span>Sensores cadastrados</span><strong>{database?.sensorCount ?? '—'}</strong></div><div className="cluster-metric"><span>Estado do banco</span><strong>{state === 'online' ? 'Online' : state === 'offline' ? 'Offline' : '—'}</strong></div></article>
               })}
             </section>
+            <div className="replication-launch"><div><strong>Quer verificar a consistência dos dados?</strong><p>Compare os GUIDs entre os três bancos e identifique eventos ausentes ou presentes em apenas um nó.</p></div><button type="button" className="export-button" onClick={() => setPage('replication')}>Comparar réplicas <Icon name="arrow" size={16}/></button></div>
             <section className="panel architecture-panel"><div className="panel-heading"><div><div className="eyebrow">ARQUITETURA DO SISTEMA</div><h2>Fluxo de dados</h2><p>Comunicação e armazenamento entre os módulos</p></div></div><div className="flow-diagram"><div className="flow-box"><Icon name="radio" size={27}/><strong>ESP32</strong><small>Sensores simulados</small></div><Icon name="arrow" size={24} className="flow-arrow"/><div className="flow-box"><Icon name="activity" size={27}/><strong>EMQX</strong><small>Mensagens MQTT</small></div><Icon name="arrow" size={24} className="flow-arrow"/><div className="flow-box flow-box--wide"><Icon name="server" size={27}/><strong>3 nós .NET</strong><small>gRPC / replicação</small></div><Icon name="arrow" size={24} className="flow-arrow"/><div className="flow-box"><Icon name="database" size={27}/><strong>3 bancos</strong><small>PostgreSQL</small></div><Icon name="arrow" size={24} className="flow-arrow"/><div className="flow-box"><Icon name="grid" size={27}/><strong>API + React</strong><small>Consulta e exibição</small></div></div><p className="diagram-note">Este painel mostra a arquitetura configurada. O estado acima verifica os bancos de dados, não a disponibilidade de cada processo gRPC ou do ESP32.</p></section>
           </>}
 
