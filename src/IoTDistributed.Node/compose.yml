@@ -45,6 +45,35 @@ services:
       db3:
         condition: service_healthy
 
+  
+  api:
+    image: iotdistributed-api:dev
+
+    build:
+      context: ../..
+      dockerfile: src/IoTDistributed.Api/Dockerfile
+
+    environment:
+      ASPNETCORE_URLS: "http://+:8080"
+
+      ConnectionStrings__Db1: "Host=db1;Port=5432;Database=iotdb;Username=iot;Password=admin"
+      ConnectionStrings__Db2: "Host=db2;Port=5432;Database=iotdb;Username=iot;Password=admin"
+      ConnectionStrings__Db3: "Host=db3;Port=5432;Database=iotdb;Username=iot;Password=admin"
+
+    ports:
+      - "127.0.0.1:6100:8080"
+
+    depends_on:
+      db1:
+        condition: service_healthy
+      db2:
+        condition: service_healthy
+      db3:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+
+
   db1:
     image: postgres:17
     environment:
