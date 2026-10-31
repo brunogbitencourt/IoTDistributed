@@ -1,0 +1,58 @@
+name: Simulator CI
+on:
+  push:
+    paths:
+      - 'src/IoTDistributed.Simulator/**'
+      - 'src/IoTDistributed.Node/compose.yml'
+      - '.github/workflows/simulator.yml'
+  pull_request:
+    paths:
+      - 'src/IoTDistributed.Simulator/**'
+      - 'src/IoTDistributed.Node/compose.yml'
+      - '.github/workflows/simulator.yml'
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore simulator
+        run: dotnet restore src/IoTDistributed.Simulator/IoTDistributed.Simulator.csproj
+      - name: Build simulator
+        run: dotnet build src/IoTDistributed.Simulator/IoTDistributed.Simulator.csproj --no-restore -c Release
+      - name: Validate Docker Compose profile
+        run: |
+          docker compose -f src/IoTDistributed.Node/compose.yml config --services | grep -v '^simulator$'
+          docker compose -f src/IoTDistributed.Node/compose.yml --profile demo config --services | grep -Fx simulator
+      - name: Build simulator container
+        run: docker build -f src/IoTDistributed.Simulator/Dockerfile -t iotdistributed-simulator:ci .
+      - name: Smoke test MQTT publication
+        run: |
+          docker network create mqtt-ci-net
+          docker run -d --name mqtt-ci-broker --network mqtt-ci-net emqx:5.8.8
+          docker run -d --name mqtt-ci-simulator --network mqtt-ci-net \
+            -e MQTT__Host=mqtt-ci-broker \
+            -e Simulator__IntervalSeconds=2 \
+            iotdistributed-simulator:ci
+
+          # EMQX pode demorar para inicializar; o Worker tenta reconectar.
+          found=0
+          for i in $(seq 1 24); do
+            if docker logs mqtt-ci-simulator 2>&1 | grep -q 'MQTT publicado'; then
+              found=1
+              break
+            fi
+            sleep 2
+          done
+
+          docker logs mqtt-ci-simulator
+          test "$found" -eq 1
+      - name: Clean up smoke-test containers
+        if: always()
+        run: |
+          docker rm -f mqtt-ci-simulator mqtt-ci-broker 2>/dev/null || true
+          docker network rm mqtt-ci-net 2>/dev/null || true

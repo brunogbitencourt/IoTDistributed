@@ -97,6 +97,29 @@ services:
         condition: service_completed_successfully
 
   
+  # Publicador opcional: somente ativado com --profile demo.
+  # O ESP32 real continua independente e não exige esse contêiner.
+  simulator:
+    profiles:
+      - demo
+    image: iotdistributed-simulator:demo
+    build:
+      context: ../..
+      dockerfile: src/IoTDistributed.Simulator/Dockerfile
+    environment:
+      MQTT__Host: "emqx"
+      MQTT__Port: "1883"
+      Simulator__IntervalSeconds: "5"
+    depends_on:
+      emqx:
+        condition: service_started
+      node-1:
+        condition: service_started
+      node-2:
+        condition: service_started
+      node-3:
+        condition: service_started
+
   frontend:
     image: iotdistributed-web:prod
     build:
