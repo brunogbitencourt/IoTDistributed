@@ -480,3 +480,33 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+
+
+# ==========================================
+# Frontend - React / Vite / TypeScript
+# ==========================================
+
+# Dependências do Node.js
+node_modules/
+
+# Builds gerados
+dist/
+dist-ssr/
+
+# Cache e cobertura
+.vite/
+coverage/
+
+# Arquivos temporários TypeScript
+*.tsbuildinfo
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Configurações locais
+.env.*
+!.env.example
